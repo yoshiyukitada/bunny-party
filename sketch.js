@@ -26,10 +26,14 @@ let touching = false;
 let lastTap = 0;
 
 function preload() {
-  bunnyImg = loadImage("nj01.png");
-  omgImg = loadImage("nj08.png");
-}
+  bunnyImg = loadImage(
+    "https://yoshiyukitada.github.io/bunny-party/nj01.png"
+  );
 
+  omgImg = loadImage(
+    "https://yoshiyukitada.github.io/bunny-party/nj08.png"
+  );
+}
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
