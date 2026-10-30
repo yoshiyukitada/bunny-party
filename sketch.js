@@ -1,36 +1,33 @@
 
 // ======================================
 // BUNNY PARTY
-// Interactive Generative Art
-// p5.js / GitHub Pages
+// NewJeans Character Generative Art
 // ======================================
 
-let bunnies = [];
-let particles = [];
 let bunnyImg;
+let omgImg;
 
-const TOTAL = 14;
-let lastTap = 0;
-let pointerActive = false;
-let pointerX = 0;
-let pointerY = 0;
+let bunnies = [];
+let logos = [];
+let particles = [];
 
-const palette = [
-  "#FF83A8",
-  "#79C9E8",
-  "#FFD65C",
-  "#B5D99A",
-  "#C6A5E8"
+const TOTAL = 12;
+const COLORS = [
+  "#FF8EAB",
+  "#80CBEA",
+  "#FFD86B",
+  "#B9D99D",
+  "#C7A9EB"
 ];
 
+let px = -1000;
+let py = -1000;
+let touching = false;
+let lastTap = 0;
+
 function preload() {
-  bunnyImg = loadImage(
-    "assets/bunny.png",
-    () => {},
-    () => {
-      bunnyImg = null;
-    }
-  );
+  bunnyImg = loadImage("assets/nj01.png");
+  omgImg = loadImage("assets/nj08.png");
 }
 
 function setup() {
@@ -38,252 +35,156 @@ function setup() {
   pixelDensity(1);
   imageMode(CENTER);
 
-  for (let i = 0; i < TOTAL; i++) {
-    createBunny();
-  }
+  resetScene();
 }
 
-function createBunny() {
-  let size = random(65, 105);
+function resetScene() {
+  bunnies = [];
+  logos = [];
+  particles = [];
 
-  bunnies.push({
-    x: random(50, width - 50),
-    y: random(80, height - 80),
+  for (let i = 0; i < TOTAL; i++) {
+    bunnies.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-2.5, 2.5),
+      vy: random(-2.5, 2.5),
+      size: random(65, 105),
+      angle: random(TWO_PI),
+      spin: random(-0.025, 0.025),
+      color: random(COLORS),
+      bounce: 0
+    });
+  }
 
-    vx: random(-2.5, 2.5),
-    vy: random(-2.5, 2.5),
-
-    size: size,
-    angle: random(TWO_PI),
-    spin: random(-0.025, 0.025),
-
-    color: random(palette),
-    bounce: 0,
-    scale: 1
-  });
+  for (let i = 0; i < 3; i++) {
+    logos.push({
+      x: random(width),
+      y: random(height),
+      vx: random(-0.8, 0.8),
+      vy: random(-0.8, 0.8),
+      angle: random(TWO_PI),
+      spin: random(-0.008, 0.008),
+      size: random(125, 190)
+    });
+  }
 }
 
 function draw() {
-  background("#FFF7E9");
+  background("#FFF7EC");
 
-  // Background dots
-  noStroke();
+  // Background OMG graphics
+  for (let l of logos) {
+    l.x += l.vx;
+    l.y += l.vy;
+    l.angle += l.spin;
 
-  for (let i = 0; i < 35; i++) {
-    fill(235, 220, 195, 75);
-    circle(
-      (i * 137) % width,
-      (i * 211) % height,
-      3
-    );
+    if (l.x < 60 || l.x > width - 60) l.vx *= -1;
+    if (l.y < 60 || l.y > height - 60) l.vy *= -1;
+
+    push();
+    translate(l.x, l.y);
+    rotate(l.angle);
+    tint(255, 65);
+    image(omgImg, 0, 0, l.size, l.size);
+    noTint();
+    pop();
   }
 
-  // Finger attraction
-  if (pointerActive) {
-    attractBunnies();
-    drawTouchEffect();
+  // Touch attracts bunnies
+  if (touching) {
+    for (let b of bunnies) {
+      let dx = px - b.x;
+      let dy = py - b.y;
+      let d = dist(px, py, b.x, b.y);
+
+      if (d < 230 && d > 5) {
+        b.vx += dx / d * 0.12;
+        b.vy += dy / d * 0.12;
+      }
+
+      b.vx = constrain(b.vx, -6, 6);
+      b.vy = constrain(b.vy, -6, 6);
+    }
+
+    noFill();
+    stroke("#FF8EAB");
+    strokeWeight(2);
+    circle(px, py, 35 + sin(frameCount * 0.15) * 10);
   }
 
-  // Bunny physics
+  // Bunny movement
   for (let b of bunnies) {
-    updateBunny(b);
+    b.x += b.vx;
+    b.y += b.vy;
+
+    b.angle += b.spin;
+    b.vx *= 0.997;
+    b.vy *= 0.997;
+
+    let r = b.size * 0.4;
+
+    if (b.x < r || b.x > width - r) {
+      b.vx *= -1;
+      b.x = constrain(b.x, r, width - r);
+      burst(b.x, b.y, 4);
+    }
+
+    if (b.y < r || b.y > height - r) {
+      b.vy *= -1;
+      b.y = constrain(b.y, r, height - r);
+      burst(b.x, b.y, 4);
+    }
+
+    if (abs(b.vx) + abs(b.vy) < 0.5) {
+      b.vx += random(-0.15, 0.15);
+      b.vy += random(-0.15, 0.15);
+    }
+
+    b.bounce *= 0.85;
+
+    push();
+    translate(b.x, b.y);
+    rotate(b.angle);
+    scale(1 + b.bounce);
+    image(bunnyImg, 0, 0, b.size, b.size);
+    pop();
   }
 
-  // Bunny collisions
+  // Collisions
   for (let i = 0; i < bunnies.length; i++) {
     for (let j = i + 1; j < bunnies.length; j++) {
-      collide(bunnies[i], bunnies[j]);
-    }
-  }
+      let a = bunnies[i];
+      let b = bunnies[j];
 
-  // Draw bunnies
-  for (let b of bunnies) {
-    drawBunny(b);
+      if (dist(a.x, a.y, b.x, b.y) <
+          (a.size + b.size) * 0.35) {
+
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let d = max(1, sqrt(dx * dx + dy * dy));
+
+        a.vx -= dx / d * 0.5;
+        a.vy -= dy / d * 0.5;
+        b.vx += dx / d * 0.5;
+        b.vy += dy / d * 0.5;
+
+        a.bounce = 0.25;
+        b.bounce = 0.25;
+      }
+    }
   }
 
   // Particles
   updateParticles();
 }
 
-// --------------------------------------
-// BUNNY MOVEMENT
-// --------------------------------------
-
-function updateBunny(b) {
-
-  b.x += b.vx;
-  b.y += b.vy;
-
-  b.angle += b.spin;
-
-  b.vx *= 0.995;
-  b.vy *= 0.995;
-
-  // Keep moving
-  if (abs(b.vx) + abs(b.vy) < 0.5) {
-    b.vx += random(-0.2, 0.2);
-    b.vy += random(-0.2, 0.2);
-  }
-
-  // Wall bounce
-  let r = b.size * 0.48;
-
-  if (b.x < r || b.x > width - r) {
-    b.vx *= -1;
-    b.x = constrain(b.x, r, width - r);
-    burst(b.x, b.y, 3);
-  }
-
-  if (b.y < r || b.y > height - r) {
-    b.vy *= -1;
-    b.y = constrain(b.y, r, height - r);
-    burst(b.x, b.y, 3);
-  }
-
-  // Bounce animation
-  b.bounce *= 0.85;
-  b.scale = 1 + b.bounce;
-}
-
-// --------------------------------------
-// TOUCH ATTRACTION
-// --------------------------------------
-
-function attractBunnies() {
-
-  for (let b of bunnies) {
-
-    let dx = pointerX - b.x;
-    let dy = pointerY - b.y;
-
-    let d = sqrt(dx * dx + dy * dy);
-
-    if (d < 220 && d > 5) {
-
-      let force = map(d, 5, 220, 0.12, 0.015);
-
-      b.vx += dx / d * force;
-      b.vy += dy / d * force;
-
-      b.vx = constrain(b.vx, -6, 6);
-      b.vy = constrain(b.vy, -6, 6);
-
-      b.bounce = 0.15;
-    }
-  }
-}
-
-function drawTouchEffect() {
-
-  noFill();
-  stroke(255, 130, 170, 130);
-  strokeWeight(2);
-
-  let pulse = 25 + sin(frameCount * 0.15) * 8;
-
-  circle(pointerX, pointerY, pulse);
-}
-
-// --------------------------------------
-// COLLISIONS
-// --------------------------------------
-
-function collide(a, b) {
-
-  let dx = b.x - a.x;
-  let dy = b.y - a.y;
-
-  let d = sqrt(dx * dx + dy * dy);
-  let minD = (a.size + b.size) * 0.38;
-
-  if (d < minD && d > 0.1) {
-
-    let nx = dx / d;
-    let ny = dy / d;
-
-    let overlap = minD - d;
-
-    a.x -= nx * overlap * 0.5;
-    a.y -= ny * overlap * 0.5;
-
-    b.x += nx * overlap * 0.5;
-    b.y += ny * overlap * 0.5;
-
-    a.vx -= nx * 0.45;
-    a.vy -= ny * 0.45;
-
-    b.vx += nx * 0.45;
-    b.vy += ny * 0.45;
-
-    a.bounce = 0.3;
-    b.bounce = 0.3;
-  }
-}
-
-// --------------------------------------
-// DRAW CHARACTER
-// --------------------------------------
-
-function drawBunny(b) {
-
-  push();
-
-  translate(b.x, b.y);
-  rotate(b.angle);
-  scale(b.scale);
-
-  if (bunnyImg) {
-
-    image(
-      bunnyImg,
-      0,
-      0,
-      b.size,
-      b.size
-    );
-
-  } else {
-
-    // Temporary placeholder
-    noStroke();
-    fill(b.color);
-
-    ellipse(0, 5, b.size * 0.72, b.size * 0.72);
-
-    ellipse(
-      -b.size * 0.2,
-      -b.size * 0.36,
-      b.size * 0.22,
-      b.size * 0.55
-    );
-
-    ellipse(
-      b.size * 0.2,
-      -b.size * 0.36,
-      b.size * 0.22,
-      b.size * 0.55
-    );
-
-    fill("#FFFFFF");
-    circle(-b.size * 0.13, 0, 7);
-    circle(b.size * 0.13, 0, 7);
-
-    fill("#333333");
-    circle(-b.size * 0.13, 0, 3);
-    circle(b.size * 0.13, 0, 3);
-  }
-
-  pop();
-}
-
-// --------------------------------------
+// --------------------------------
 // PARTICLES
-// --------------------------------------
+// --------------------------------
 
-function burst(x, y, amount) {
-
-  for (let i = 0; i < amount; i++) {
-
+function burst(x, y, n) {
+  for (let i = 0; i < n; i++) {
     particles.push({
       x: x,
       y: y,
@@ -291,29 +192,24 @@ function burst(x, y, amount) {
       vy: random(-3, 3),
       life: 255,
       size: random(3, 8),
-      color: random(palette)
+      color: random(COLORS)
     });
   }
 }
 
 function updateParticles() {
-
   noStroke();
 
   for (let i = particles.length - 1; i >= 0; i--) {
-
     let p = particles[i];
 
     p.x += p.vx;
     p.y += p.vy;
-
     p.life -= 5;
 
     fill(p.color);
     drawingContext.globalAlpha = p.life / 255;
-
     circle(p.x, p.y, p.size);
-
     drawingContext.globalAlpha = 1;
 
     if (p.life <= 0) {
@@ -322,93 +218,64 @@ function updateParticles() {
   }
 }
 
-// --------------------------------------
-// TOUCH / MOUSE
-// --------------------------------------
+// --------------------------------
+// TOUCH AND MOUSE
+// --------------------------------
 
-function handlePress() {
-
-  pointerX = mouseX;
-  pointerY = mouseY;
+function pressAction() {
+  px = mouseX;
+  py = mouseY;
 
   let now = millis();
 
-  // Double tap: reset
   if (now - lastTap < 350) {
-    resetBunnies();
+    resetScene();
     lastTap = 0;
     return;
   }
 
   lastTap = now;
-
-  // Small burst
-  burst(pointerX, pointerY, 18);
-
-  pointerActive = true;
+  touching = true;
+  burst(px, py, 20);
 }
 
-function handleMove() {
-
-  pointerX = mouseX;
-  pointerY = mouseY;
-
-  burst(pointerX, pointerY, 1);
+function moveAction() {
+  px = mouseX;
+  py = mouseY;
+  burst(px, py, 1);
 }
 
 function touchStarted() {
-  handlePress();
+  pressAction();
   return false;
 }
 
 function touchMoved() {
-  handleMove();
+  moveAction();
   return false;
 }
 
 function touchEnded() {
-  pointerActive = false;
+  touching = false;
   return false;
 }
 
 function mousePressed() {
-  handlePress();
+  pressAction();
 }
 
 function mouseDragged() {
-  handleMove();
+  moveAction();
 }
 
 function mouseReleased() {
-  pointerActive = false;
+  touching = false;
 }
 
-// --------------------------------------
-// RESET
-// --------------------------------------
-
-function resetBunnies() {
-
-  bunnies = [];
-  particles = [];
-
-  for (let i = 0; i < TOTAL; i++) {
-    createBunny();
-  }
-
-  burst(width / 2, height / 2, 40);
-}
-
-// --------------------------------------
+// --------------------------------
 // RESIZE
-// --------------------------------------
+// --------------------------------
 
 function windowResized() {
-
   resizeCanvas(windowWidth, windowHeight);
-
-  for (let b of bunnies) {
-    b.x = constrain(b.x, 40, width - 40);
-    b.y = constrain(b.y, 40, height - 40);
-  }
 }
