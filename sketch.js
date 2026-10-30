@@ -26,8 +26,8 @@ let touching = false;
 let lastTap = 0;
 
 function preload() {
-  bunnyImg = loadImage("assets/nj01.png");
-  omgImg = loadImage("assets/nj08.png");
+  bunnyImg = loadImage("nj01.png");
+  omgImg = loadImage("nj08.png");
 }
 
 function setup() {
